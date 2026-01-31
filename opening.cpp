@@ -1,4 +1,6 @@
 #include <bits/stdc++.h>
+#include <fstream>
+
 using namespace std;
 
 // mt19937 rng(random_device{}());
@@ -797,6 +799,22 @@ vector<vector<int>> reflection(vector<vector<int>> record){
 	}
 	return reflected;
 }
+
+Board encode_to_board(const vector<vector<int>>& record) {
+    Board board;
+    for (auto& h : record) {
+        enum State st = board.place(h[0], h[1]);
+        assert(st != State::Invalid);
+        assert(st != State::End); //4手目までに勝敗はつかない
+    }
+    return board;
+}
+//Board比較関数
+bool same_board(const Board& a, const Board& b) {
+    return a.Me == b.Me && a.You == b.You;
+}
+
+
 int main(){
     vector<vector<vector<int>>> openings;
 
@@ -843,4 +861,70 @@ int main(){
 		cout << ref[i][0]  << " "<< ref[i][1] << endl;
 	}
 	*/
+	vector<bool> judge(openings.size(),true);
+	for(int i = 0; i < openings.size();i++){
+		//もしjudge[i] == false ならもうその同型類は消し終わっている
+		if(!judge[i]) continue;
+		//record_0は比較元の局面
+		vector<vector<int>> record_0 = openings[i];
+		Board board_0 = encode_to_board(record_0);
+
+		vector<vector<int>> record_90 = rotate90(record_0);
+		Board board90 = encode_to_board(record_90);
+
+		vector<vector<int>> record_180 = rotate90(rotate90(record_0));
+		Board board180 = encode_to_board(record_180);
+
+		vector<vector<int>> record_270 = rotate90(rotate90(rotate90(record_0)));
+		Board board270 = encode_to_board(record_270);
+
+		vector<vector<int>> reflected = reflection(record_0);
+		Board board_ref = encode_to_board(reflected);
+
+		vector<vector<int>> reflected90 = reflection(record_90);
+		Board board_ref_90 = encode_to_board(reflected90);
+
+		vector<vector<int>> reflected180 = reflection(record_180);
+		Board board_ref_180 = encode_to_board(reflected180);
+
+		vector<vector<int>> reflected270 = reflection(record_270);
+		Board board_ref_270 = encode_to_board(reflected270);
+
+		for(int j = i+1; j < openings.size(); j++){
+			//j < iでopenings[j]を消す必要があったとしても,その配列はi がjだった時点の探索で現在のopenings[i]が消されている
+			//if(j == i) continue;
+			if(!judge[j]) continue;
+			vector<vector<int>> record_com = openings[j];
+			Board board_com = encode_to_board(record_com);
+			//board_comをboard_0の変換たちと比較
+			if(same_board(board_com,board_0) || same_board(board_com,board90) || same_board(board_com, board180) || same_board(board_com, board270)
+			|| same_board(board_com, board_ref) || same_board(board_com, board_ref_90) || same_board(board_com, board_ref_180) || same_board(board_com,board_ref_270)){
+				judge[j] = false;
+			} 
+		}
+	}
+	//uniqueに対称性で割った代表元を集める
+	vector<vector<vector<int>>> unique;
+	for(int i = 0; i < openings.size(); i++){
+		if(judge[i]){
+			unique.push_back(openings[i]);
+		}
+	}
+	//出力
+	ofstream ofs("unique_openings.txt");
+
+	ofs << "vector<vector<vector<int>>> unique = {\n";
+
+	for (const auto& opening : unique) {
+		ofs << "    {";
+		for (int i = 0; i < opening.size(); i++) {
+			ofs << "{" << opening[i][0] << "," << opening[i][1] << "}";
+			if (i + 1 != opening.size()) ofs << ", ";
+		}
+		ofs << "},\n";
+	}
+
+	ofs << "};\n";
+	ofs.close();
+
 }
